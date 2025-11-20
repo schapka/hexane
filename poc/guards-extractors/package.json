@@ -1,0 +1,13 @@
+{
+  "name": "guards-extractors-poc",
+  "version": "0.0.1",
+  "private": true,
+  "description": "POC for Hexane Guards & Extractors fluent API",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test:types": "tsc --noEmit type-tests.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

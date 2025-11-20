@@ -28,11 +28,12 @@ Create a framework that combines Nitro's deployment flexibility with enterprise 
 
 ### Core Design Principles
 
-1. **No Experimental Decorators**: Use standard JavaScript/TypeScript features only
+1. **Decorator-Free Core**: Core design does not depend on experimental decorators (may be added as optional future feature)
 2. **Standards-First**: Embrace Standard Schema, web standards, ECMAScript standards
 3. **Zero-Config with Escape Hatches**: Auto-detect and configure, but allow overrides
 4. **Type-Safety Without Magic**: Full TypeScript support with inference
 5. **Edge-First**: Lightweight, tree-shakeable, no Node-specific dependencies in core
+6. **Fluent API Design**: Chainable, readable APIs with clear intent
 
 ## Key Patterns to Implement
 
@@ -45,18 +46,34 @@ if (packageExists("drizzle-orm")) {
 }
 ```
 
-### 2. Extractor Pattern (Axum Inspired)
+### 2. Extractors & Guards Pattern (Axum Inspired)
+
+**Two types of route handlers:**
+
+- **Guards**: Validate/check conditions but don't extract values (e.g., rate limiting, API key validation)
+- **Extractors**: Extract and validate typed values from requests (e.g., body, params, auth user)
+
+**Fluent API Design:**
 
 ```typescript
-// Type-safe request data extraction without decorators
-handler(
-  new Path(ParamsSchema),
-  new Body(UserSchema),
-  new Auth<User>()
-)(async (params, body, user) => {
-  // Fully typed and validated
-});
+// Guards first, then extractors, handler gets only extracted values
+router.post('/users',
+  route()
+    .rateLimit({ max: 100 })        // Guard - no value extracted
+    .validateApiKey()                // Guard - no value extracted
+    .body(UserSchema)                // Extractor - adds body to params
+    .auth()                          // Extractor - adds user to params
+    .handle(async (body, user) => {  // Only extracted values as params!
+      return createUser(body, user);
+    })
+);
 ```
+
+**Key Benefits:**
+- Clear separation between validation (guards) and data extraction (extractors)
+- Type-safe: handler signature automatically inferred from extractors
+- Readable: intent is clear from the chain
+- Composable: easy to reorder or add new guards/extractors
 
 ### 3. Parameter-Based DI (FastAPI Inspired)
 
@@ -86,7 +103,10 @@ const schema = z.object({
 
 ### Core Modules
 
-- **Router**: Enhanced h3 router with extractors
+- **Router**: Enhanced h3 router with fluent API
+- **Guards**: Validation and checks without value extraction (rate limiting, auth checks)
+- **Extractors**: Type-safe data extraction from requests (body, params, query, auth)
+- **Route Builder**: Fluent `route()` API for chaining guards and extractors
 - **DI Container**: Parameter-based dependency injection
 - **Auto-Configuration**: Package detection and setup
 - **Validation**: Standard Schema integration
@@ -105,35 +125,38 @@ const schema = z.object({
 
 ### What We Build
 
-- ✅ Type-safe APIs without decorators
+- ✅ Type-safe APIs with fluent Guard and Extractor chains
 - ✅ Auto-configured services based on environment
-- ✅ Composable middleware using extractors
+- ✅ Composable guards (validation) and extractors (data extraction)
 - ✅ Standards-compliant code
 - ✅ Edge-deployable applications
+- ✅ Clear, readable route definitions
 
 ### What We Avoid
 
-- ❌ Experimental decorators
+- ❌ Decorator-dependent core design (decorators may be optional later, but core must work without them)
 - ❌ Runtime type checking in production
 - ❌ Node-specific APIs in core
 - ❌ Complex build pipelines
 - ❌ Framework lock-in
+- ❌ Implicit behavior or "magic"
 
 ## Example Code Patterns
 
-### Route Handler
+### Route Handler with Guards and Extractors
 
 ```typescript
 export default defineRouter().get(
   "/users/:id",
-  handler(
-    new Path({ id: z.string().uuid() }),
-    new Query<{ include?: string }>(),
-    new Auth<User>()
-  )(async (params, query, user) => {
-    if (!user) throw unauthorized();
-    return await userService.findById(params.id);
-  })
+  route()
+    .rateLimit({ max: 50 })
+    .requireAuth()                              // Guard - checks auth exists
+    .params({ id: z.string().uuid() })          // Extractor - typed params
+    .query<{ include?: string }>()              // Extractor - typed query
+    .auth<User>()                               // Extractor - user object
+    .handle(async (params, query, user) => {    // Fully typed!
+      return await userService.findById(params.id, query.include);
+    })
 );
 ```
 
@@ -174,17 +197,22 @@ export const usersModule = defineModule({
 - [x] Framework vision and goals
 - [x] Core pattern identification
 - [x] Architecture documentation
+- [x] Guard/Extractor fluent API design decision
+- [x] POC for Guards & Extractors pattern
+- [x] ADR-0001: Guards and Extractors Pattern
 
 ### In Progress
 
-- [ ] Proof of concept for extractors
-- [ ] Proof of concept for DI container
-- [ ] Proof of concept for auto-configuration
+- [ ] Core router implementation with Guards & Extractors
 
 ### Upcoming
 
-- [ ] Core router implementation
+- [ ] ADR-0002: Fluent API Implementation
+- [ ] ADR-0003: Handler Parameter Type Inference
+- [ ] ADR-0004: Custom Extension Points
+- [ ] DI container
 - [ ] Standard Schema integration
+- [ ] Auto-configuration
 - [ ] Module system
 - [ ] CLI tooling
 
@@ -248,7 +276,9 @@ Should work with any:
 
 ## Glossary
 
-- **Extractor**: Function that extracts and validates data from HTTP requests
+- **Guard**: Validates/checks conditions without extracting values (e.g., rate limiting, authentication checks)
+- **Extractor**: Extracts and validates typed data from HTTP requests (e.g., body, params, query, user)
+- **Fluent API**: Chainable method calls that read naturally and return self for further chaining
 - **Auto-Configuration**: Automatic setup based on detected packages
 - **Standard Schema**: Unified interface for validation libraries
 - **Edge Runtime**: JavaScript runtime for edge computing (Workers, Deno Deploy)
@@ -260,19 +290,24 @@ Should work with any:
 - [Nitro Documentation](https://nitro.unjs.io)
 - [H3 Documentation](https://h3.unjs.io)
 - [Standard Schema Spec](https://github.com/standard-schema/standard-schema)
-- [Project Repository](https://github.com/[username]/hexane)
+- [ADR-0001: Guards and Extractors Pattern](/docs/architecture/decisions/0001-guards-and-extractors-pattern.md)
+- [POC: Guards & Extractors](/poc/guards-extractors/)
 
 ## AI Assistant Notes
 
 When helping with Hexane:
 
-1. Always avoid experimental decorators
-2. Prefer composition over inheritance
-3. Use Standard Schema for validation
-4. Consider edge compatibility
-5. Maintain type safety
-6. Follow the extractor pattern for request handling
-7. Use parameter-based DI, not property injection
-8. Auto-configure when possible
+1. Core must work without decorators (decorators may be added as optional future feature)
+2. Always use the fluent Guard/Extractor pattern for routes
+3. Guards validate/check but don't extract values
+4. Extractors provide typed values to handlers
+5. Handler parameters should only include extracted values (no event object!)
+6. Use Standard Schema for validation
+7. Consider edge compatibility in all code
+8. Maintain type safety with full inference
+9. Use parameter-based DI, not property injection
+10. Auto-configure when possible
+11. Prefer composition over inheritance
+12. Keep APIs readable and chainable
 
 Remember: We're building for the future of JavaScript, not maintaining compatibility with legacy patterns.

@@ -59,22 +59,22 @@ We will use a **catch-all route pattern** (`routes/[...].ts`) as the integration
 
 ```typescript
 // routes/[...].ts - Framework internal, not user code
-import { defineEventHandler } from "h3";
-import { createH3AppFromModule } from "../core";
-import { AppModule } from "../app/main";
+import { defineEventHandler } from 'h3'
+import { AppModule } from '../app/main'
+import { createH3AppFromModule } from '../core'
 
-const { app, routes, providers } = createH3AppFromModule(AppModule);
+const { app, routes, providers } = createH3AppFromModule(AppModule)
 
 export default defineEventHandler((event) => {
-  return app.handler(event);
-});
+  return app.handler(event)
+})
 ```
 
 #### 2. User Entry Point
 
 ```typescript
 // app/main.ts - User's ONLY framework interaction
-export { AppModule } from "./app.module";
+export { AppModule } from './app.module'
 ```
 
 #### 3. Core Module Tree Builder
@@ -83,21 +83,21 @@ export { AppModule } from "./app.module";
 // core.ts - Framework API
 export function createH3AppFromModule(rootModule: ModuleDefinition) {
   // 1. Traverse module tree
-  const routes = collectRoutes(rootModule);
-  const providers = collectProviders(rootModule);
+  const routes = collectRoutes(rootModule)
+  const providers = collectProviders(rootModule)
 
   // 2. Build h3 app
-  const h3App = createH3App();
-  const router = createH3Router();
+  const h3App = createH3App()
+  const router = createH3Router()
 
   // 3. Register routes
   for (const route of routes) {
-    router[route.method.toLowerCase()](route.path, route.handler);
+    router[route.method.toLowerCase()](route.path, route.handler)
   }
 
-  h3App.use(router);
+  h3App.use(router)
 
-  return { app: h3App, routes, providers };
+  return { app: h3App, routes, providers }
 }
 ```
 
@@ -140,16 +140,16 @@ export function createH3AppFromModule(rootModule: ModuleDefinition) {
 ```typescript
 // plugins/hexane.ts - DOES NOT WORK
 export default defineNitroPlugin((nitroApp) => {
-  const { app } = createH3AppFromModule(AppModule);
+  const { app } = createH3AppFromModule(AppModule)
 
   // Attempt 1: Register as middleware
-  nitroApp.h3App.use(eventHandler((event) => app.handler(event)));
+  nitroApp.h3App.use(eventHandler(event => app.handler(event)))
 
   // Attempt 2: Register individual routes
   for (const route of routes) {
-    nitroApp.h3App.router[route.method](route.path, route.handler);
+    nitroApp.h3App.router[route.method](route.path, route.handler)
   }
-});
+})
 ```
 
 **Why it failed:**
@@ -238,8 +238,8 @@ For production (v1.0), we'll hide the catch-all route in `@hexane/core`:
 
 ### Alternative 1: File-Based Routing (Nuxt-style)
 
-```typescript
-// Rejected approach
+```bash
+# Rejected approach
 routes/
   ├── api/
   │   ├── users.ts
@@ -259,11 +259,11 @@ routes/
 // Rejected approach
 export function hexanePreset() {
   return defineNitroPreset({
-    extends: "node-server",
+    extends: 'node-server',
     hooks: {
       /* inject routes */
     },
-  });
+  })
 }
 ```
 
@@ -277,8 +277,8 @@ export function hexanePreset() {
 
 ```typescript
 // Rejected approach
-const app = await createApp(AppModule);
-await app.listen(3000);
+const app = await createApp(AppModule)
+await app.listen(3000)
 ```
 
 **Why rejected:**
@@ -411,12 +411,12 @@ export function createHexaneNitroConfig(userModule) {
   return defineNitroConfig({
     // Hexane injects plugins based on what user uses
     plugins: [
-      detectStorage(userModule) && "@hexane/plugin-storage",
-      detectTasks(userModule) && "@hexane/plugin-tasks",
-      detectWebSockets(userModule) && "@hexane/plugin-websocket",
+      detectStorage(userModule) && '@hexane/plugin-storage',
+      detectTasks(userModule) && '@hexane/plugin-tasks',
+      detectWebSockets(userModule) && '@hexane/plugin-websocket',
       // User never sees these!
     ].filter(Boolean),
-  });
+  })
 }
 ```
 

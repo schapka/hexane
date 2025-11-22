@@ -1,0 +1,38 @@
+{
+  "name": "@hexane/cli",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Hexane framework CLI",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/schapka/hexane.git",
+    "directory": "packages/cli"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "hexane": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "dev": "rolldown -c rolldown.config.ts --watch",
+    "build": "rolldown -c rolldown.config.ts"
+  },
+  "devDependencies": {
+    "eslint": "catalog:dev",
+    "rolldown": "catalog:dev",
+    "typescript": "catalog:dev"
+  }
+}

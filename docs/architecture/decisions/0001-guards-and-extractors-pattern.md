@@ -41,10 +41,11 @@ We adopt the **Guards and Extractors Pattern**, establishing two distinct types 
 
 **Examples**:
 ```typescript
-.rateLimit({ max: 100 })     // Check rate limit
-.requireAuth()                // Verify authentication exists
-.requireRole('admin')         // Verify user has role
-.guard(checkMaintenance())    // Custom guard
+route()
+  .rateLimit({ max: 100 }) // Check rate limit
+  .requireAuth() // Verify authentication exists
+  .requireRole('admin') // Verify user has role
+  .guard(checkMaintenance()) // Custom guard
 ```
 
 ### Extractors
@@ -58,11 +59,12 @@ We adopt the **Guards and Extractors Pattern**, establishing two distinct types 
 
 **Examples**:
 ```typescript
-.body<CreateUserDto>(schema)  // Extract & validate body
-.params<{ id: string }>()     // Extract route params
-.query<PaginationQuery>()     // Extract query string
-.auth<User>()                 // Extract authenticated user
-.extract<string>(getIp())     // Custom extractor
+route()
+  .body<CreateUserDto>(schema) // Extract & validate body
+  .params<{ id: string }>() // Extract route params
+  .query<PaginationQuery>() // Extract query string
+  .auth<User>() // Extract authenticated user
+  .extract<string>(getIp()) // Custom extractor
 ```
 
 ### Clear Separation
@@ -86,7 +88,7 @@ route()
 
   // Handler: business logic with extracted data only
   .handle(async (body, user) => {
-    return createUser(body, user);
+    return createUser(body, user)
   })
 ```
 
@@ -149,13 +151,15 @@ route()
 **Approach**: Use decorators for validation and extraction
 
 ```typescript
-@Post('/users')
-@RateLimit({ max: 100 })
-@RequireAuth()
-async handle(
-  @Body() body: CreateUserDto,
-  @Auth() user: User
-) {}
+class UsersController {
+  @Post('/users')
+  @RateLimit({ max: 100 })
+  @RequireAuth()
+  async handle(
+    @Body() body: CreateUserDto,
+    @Auth() user: User
+  ) {}
+}
 ```
 
 **Rejected because**:
@@ -175,7 +179,7 @@ const handler = compose(
   extractBody(schema),
   extractAuth(),
   (body, user) => createUser(body, user)
-);
+)
 ```
 
 **Rejected because**:
@@ -209,7 +213,7 @@ Key implementation considerations for future:
 route()
   .body(CreateUserSchema)
   .handle(async (body) => {
-    return await userService.create(body);
+    return await userService.create(body)
   })
 ```
 
@@ -223,7 +227,7 @@ route()
   .body(UpdateUserSchema)
   .auth()
   .handle(async (params, body, user) => {
-    return await userService.update(params.id, body);
+    return await userService.update(params.id, body)
   })
 ```
 
@@ -233,7 +237,7 @@ route()
 route()
   .rateLimit({ max: 1000 })
   .handle(async () => {
-    return { message: 'Hello, World!' };
+    return { message: 'Hello, World!' }
   })
 ```
 
@@ -250,7 +254,7 @@ route()
   .auth()
   .extract(clientIpExtractor())
   .handle(async (params, query, body, user, clientIp) => {
-    return await processRequest(params, query, body, user, clientIp);
+    return await processRequest(params, query, body, user, clientIp)
   })
 ```
 

@@ -41,8 +41,8 @@ Create a framework that combines Nitro's deployment flexibility with enterprise 
 
 ```typescript
 // Automatically detect and configure based on installed packages
-if (packageExists("drizzle-orm")) {
-  autoConfigureDatabase();
+if (packageExists('drizzle-orm')) {
+  autoConfigureDatabase()
 }
 ```
 
@@ -58,7 +58,7 @@ if (packageExists("drizzle-orm")) {
 ```typescript
 // Guards first, then extractors, handler gets only extracted values
 router.post(
-  "/users",
+  '/users',
   route()
     .rateLimit({ max: 100 }) // Guard - no value extracted
     .validateApiKey() // Guard - no value extracted
@@ -66,9 +66,9 @@ router.post(
     .auth() // Extractor - adds user to params
     .handle(async (body, user) => {
       // Only extracted values as params!
-      return createUser(body, user);
+      return createUser(body, user)
     })
-);
+)
 ```
 
 **Key Benefits:**
@@ -85,12 +85,12 @@ router.post(
 ```typescript
 // Module definition - clean, decorator-free
 export const UsersModule = defineModule({
-  name: "users",
+  name: 'users',
   imports: [CommonModule], // Shared modules
   routes: [userRoutes], // Route definitions
   providers: [UserService], // Services
   exports: [UserService], // Exportable services
-});
+})
 ```
 
 **Key Improvements Over NestJS:**
@@ -117,12 +117,12 @@ export const UsersModule = defineModule({
     CommonModule, // Eager
     () => OrdersModule, // Lazy (breaks cycles)
   ],
-});
+})
 
 // ❌ AVOID: Module imports for services (causes cycles)
 export const UsersModule = defineModule({
   imports: [OrdersModule], // Just to use OrderService - don't do this!
-});
+})
 ```
 
 **See:** ADR-0003 for detailed circular dependency strategy
@@ -143,12 +143,12 @@ async function handler(
 
 ```typescript
 // Support any validator (Zod, Valibot, Arktype)
-import { z } from "zod"; // or valibot, or arktype
+import { z } from 'zod' // or valibot, or arktype
 
 const schema = z.object({
   name: z.string(),
   email: z.string().email(),
-});
+})
 ```
 
 ## Architecture Components
@@ -199,7 +199,7 @@ const schema = z.object({
 
 ```typescript
 export default defineRouter().get(
-  "/users/:id",
+  '/users/:id',
   route()
     .rateLimit({ max: 50 })
     .requireAuth() // Guard - checks auth exists
@@ -208,9 +208,9 @@ export default defineRouter().get(
     .auth<User>() // Extractor - user object
     .handle(async (params, query, user) => {
       // Fully typed!
-      return await userService.findById(params.id, query.include);
+      return await userService.findById(params.id, query.include)
     })
-);
+)
 ```
 
 ### Service with DI
@@ -224,9 +224,9 @@ class UserService {
   ) {}
 
   async create(data: CreateUser) {
-    const user = await this.db.users.create(data);
-    await this.events.emit("user:created", user);
-    return user;
+    const user = await this.db.users.create(data)
+    await this.events.emit('user:created', user)
+    return user
   }
 }
 ```
@@ -235,12 +235,12 @@ class UserService {
 
 ```typescript
 export const usersModule = defineModule({
-  name: "users",
+  name: 'users',
   imports: [CommonModule],
   routes: userRoutes,
   providers: [UserService, UserRepository],
   exports: [UserService],
-});
+})
 ```
 
 ## Implementation Status
@@ -354,24 +354,24 @@ Hexane abstracts Nitro completely, providing a clean user experience:
 ### Current (POC)
 
 ```typescript
+import { AppModule } from '../app/main'
 // routes/[...].ts - Framework internal (users see this in POC)
-import { createH3AppFromModule } from "../core";
-import { AppModule } from "../app/main";
+import { createH3AppFromModule } from '../core'
 
-const { app } = createH3AppFromModule(AppModule);
-export default defineEventHandler((event) => app.handler(event));
+const { app } = createH3AppFromModule(AppModule)
+export default defineEventHandler(event => app.handler(event))
 ```
 
 ### Future (v1.0)
 
-```typescript
-// User's project - NO Nitro files visible
+```bash
+# User's project - NO Nitro files visible
 my-app/
 ├── app/
 │   └── main.ts        # export { AppModule }
 └── package.json       # "dev": "hexane dev"
 
-// Everything else managed by @hexane/core CLI
+# Everything else managed by @hexane/core CLI
 ```
 
 **Key Decisions:**
@@ -415,7 +415,7 @@ class UserService {
 // No module imports needed!
 export const UsersModule = defineModule({
   providers: [UserService], // OrderService available via DI
-});
+})
 ```
 
 **Fallback: Lazy Module Imports**
@@ -426,7 +426,7 @@ export const UsersModule = defineModule({
     CommonModule, // Eager - no cycle risk
     () => OrdersModule, // Lazy - breaks cycles
   ],
-});
+})
 ```
 
 **Alternative: Event-Driven**
@@ -434,9 +434,9 @@ export const UsersModule = defineModule({
 ```typescript
 class OrderService {
   async create(order: CreateOrder) {
-    const result = await this.db.create(order);
-    await this.events.emit("order.created", result); // Decoupled!
-    return result;
+    const result = await this.db.create(order)
+    await this.events.emit('order.created', result) // Decoupled!
+    return result
   }
 }
 ```

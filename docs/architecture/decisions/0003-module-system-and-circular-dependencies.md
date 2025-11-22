@@ -36,9 +36,9 @@ export class OrdersModule {}
 **Root cause:** Module imports happen at JavaScript execution time, creating actual circular references in the module system:
 
 ```typescript
-import { OrdersModule } from './orders'  // Loads orders.ts
-└─> import { UsersModule } from './users'  // Loads users.ts
-    └─> import { OrdersModule } from './orders'  // ⚠️ CYCLE!
+import { OrdersModule } from './orders' // Loads orders.ts
+// └─> import { UsersModule } from './users'  // Loads users.ts
+//    └─> import { OrdersModule } from './orders'  // ⚠️ CYCLE!
 ```
 
 ### Why It's Common
@@ -125,11 +125,11 @@ Module System Layers:
 ```typescript
 // users.module.ts
 export const UsersModule = defineModule({
-  name: "users",
+  name: 'users',
   routes: [userRoutes],
   providers: [UserService],
   // NO module imports needed for service dependencies!
-});
+})
 
 // users.service.ts
 class UserService {
@@ -139,17 +139,17 @@ class UserService {
   ) {}
 
   async getUserOrders(userId: string) {
-    return this.orders.findByUser(userId);
+    return this.orders.findByUser(userId)
   }
 }
 
 // orders.module.ts
 export const OrdersModule = defineModule({
-  name: "orders",
+  name: 'orders',
   routes: [orderRoutes],
   providers: [OrderService],
   // Also no imports!
-});
+})
 
 // orders.service.ts
 class OrderService {
@@ -158,7 +158,7 @@ class OrderService {
   ) {}
 
   async createOrder(order: CreateOrder) {
-    const user = await this.users.findById(order.userId);
+    const user = await this.users.findById(order.userId)
     // Validate user, create order, etc.
   }
 }
@@ -192,7 +192,7 @@ export const UsersModule = defineModule({
   ],
   routes: [userRoutes],
   providers: [UserService],
-});
+})
 
 // orders.module.ts
 export const OrdersModule = defineModule({
@@ -202,33 +202,33 @@ export const OrdersModule = defineModule({
   ],
   routes: [orderRoutes],
   providers: [OrderService],
-});
+})
 ```
 
 **Implementation:**
 
 ```typescript
 // core.ts
-export type ModuleImport = ModuleDefinition | (() => ModuleDefinition);
+export type ModuleImport = ModuleDefinition | (() => ModuleDefinition)
 
 function traverseModule(
   module: ModuleDefinition,
   visited = new Set<ModuleDefinition>()
 ) {
   if (visited.has(module)) {
-    return; // Already processed
+    return // Already processed
   }
-  visited.add(module);
+  visited.add(module)
 
   if (module.imports) {
     for (const imported of module.imports) {
       // Handle lazy module references
-      const resolvedModule =
-        typeof imported === "function"
+      const resolvedModule
+        = typeof imported === 'function'
           ? imported() // Call function to get module
-          : imported;
+          : imported
 
-      traverseModule(resolvedModule, visited);
+      traverseModule(resolvedModule, visited)
     }
   }
 
@@ -255,30 +255,30 @@ function traverseModule(
   // Check for cycles
   if (stack.includes(module)) {
     const cycle = [...stack, module]
-      .map((m) => m.name || "unnamed")
-      .join(" → ");
+      .map(m => m.name || 'unnamed')
+      .join(' → ')
 
     console.warn(
-      `⚠️  Circular dependency detected:\n` +
-        `   ${cycle}\n\n` +
-        `💡 Solutions:\n` +
-        `   1. Use service-level DI instead of module imports\n` +
-        `   2. Use lazy imports: imports: [() => Module]\n` +
-        `   3. Extract shared code to CommonModule\n` +
-        `   4. Use event-driven patterns for decoupling\n`
-    );
+      `⚠️  Circular dependency detected:\n`
+      + `   ${cycle}\n\n`
+      + `💡 Solutions:\n`
+      + `   1. Use service-level DI instead of module imports\n`
+      + `   2. Use lazy imports: imports: [() => Module]\n`
+      + `   3. Extract shared code to CommonModule\n`
+      + `   4. Use event-driven patterns for decoupling\n`
+    )
 
     // In strict mode, could throw
-    if (process.env.HEXANE_STRICT_CYCLES === "true") {
-      throw new Error(`Circular dependency: ${cycle}`);
+    if (process.env.HEXANE_STRICT_CYCLES === 'true') {
+      throw new Error(`Circular dependency: ${cycle}`)
     }
 
-    return;
+    return
   }
 
-  stack.push(module);
+  stack.push(module)
   // ... traverse
-  stack.pop();
+  stack.pop()
 }
 ```
 
@@ -320,16 +320,16 @@ class OrderService {
   constructor(private events = inject(EventBus)) {}
 
   async createOrder(order: CreateOrder) {
-    const newOrder = await this.db.orders.create(order);
+    const newOrder = await this.db.orders.create(order)
 
     // Emit event instead of calling UserService
-    await this.events.emit("order.created", {
+    await this.events.emit('order.created', {
       orderId: newOrder.id,
       userId: order.userId,
       total: order.total,
-    });
+    })
 
-    return newOrder;
+    return newOrder
   }
 }
 
@@ -337,7 +337,7 @@ class OrderService {
 class UserService {
   constructor(private events = inject(EventBus)) {
     // React to order events
-    this.events.on("order.created", this.handleOrderCreated.bind(this));
+    this.events.on('order.created', this.handleOrderCreated.bind(this))
   }
 
   private async handleOrderCreated(event: OrderCreatedEvent) {
@@ -345,7 +345,7 @@ class UserService {
     await this.db.users.update(event.userId, {
       orderCount: { increment: 1 },
       lifetimeValue: { increment: event.total },
-    });
+    })
   }
 }
 ```
@@ -379,12 +379,12 @@ export const UsersModule = defineModule({
     AuthModule, // Middleware/guards
     () => OrdersModule, // Routes (if needed, lazy)
   ],
-});
+})
 
 // ❌ AVOID: Importing just for services
 export const UsersModule = defineModule({
   imports: [OrdersModule], // Just to use OrderService
-});
+})
 
 // ✅ BETTER: Use DI in services
 class UserService {
@@ -406,9 +406,9 @@ class UserService {
 // ✅ GOOD: Event-driven for side effects
 class OrderService {
   async create(order: CreateOrder) {
-    const result = await this.db.create(order);
-    await this.events.emit("order.created", result);
-    return result;
+    const result = await this.db.create(order)
+    await this.events.emit('order.created', result)
+    return result
   }
 }
 
@@ -419,7 +419,7 @@ class UserService {
   ) {}
 
   async getOrders() {
-    return this.ordersModule.services.orders.find(); // Bad!
+    return this.ordersModule.services.orders.find() // Bad!
   }
 }
 ```
@@ -449,7 +449,7 @@ export class UsersModule {}
 export const UsersModule = defineModule({
   imports: [() => OrdersModule], // ✅ Clear intent
   providers: [UserService],
-});
+})
 
 // Or better: no import needed
 class UserService {

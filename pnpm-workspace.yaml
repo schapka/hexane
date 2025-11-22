@@ -1,0 +1,11 @@
+packages:
+  - packages/*
+
+catalogs:
+  dev:
+    '@antfu/eslint-config': ^6.2.0
+    eslint: ^9.39.1
+    husky: ^9.1.7
+    lint-staged: ^16.2.7
+    rolldown: 1.0.0-beta.51
+    typescript: ^5.9.3

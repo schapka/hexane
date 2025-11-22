@@ -1,0 +1,57 @@
+/**
+ * Hexane Nitro Plugin (NON-FUNCTIONAL - FOR REFERENCE ONLY)
+ *
+ * ❌ THIS APPROACH DOES NOT WORK ❌
+ *
+ * This was an attempt to integrate Hexane's module system with Nitro via plugins.
+ * However, Nitro plugins run AFTER the routing system is configured, making it
+ * impossible to properly register routes.
+ *
+ * See INTEGRATION_COMPARISON.md for full analysis.
+ *
+ * The correct approach is using routes/[...].ts (catch-all route pattern).
+ *
+ * WHEN TO USE NITRO PLUGINS:
+ * - ✅ Middleware (CORS, compression, logging)
+ * - ✅ Initialization (database, caching)
+ * - ✅ Runtime hooks (request/response transformation)
+ * - ❌ NOT for route registration
+ */
+
+import { createH3AppFromModule } from '../core'
+import { AppModule } from '../example-app/app.module'
+
+export default defineNitroPlugin((nitroApp) => {
+  // Build h3 app from module tree
+  const { app, routes, providers } = createH3AppFromModule(AppModule)
+
+  // Log startup info (only in dev mode)
+  if (import.meta.dev) {
+    console.log('\n🔷 Hexane Plugin Loaded')
+    console.log('\n📋 Attempting to Register Routes:')
+    for (const route of routes) {
+      console.log(`  ${route.method.padEnd(6)} ${route.path}`)
+    }
+    console.log('\n📦 Registered Providers:')
+    for (const provider of providers) {
+      console.log(`  - ${provider.name || provider}`)
+    }
+    console.log('')
+  }
+
+  // Register individual routes with Nitro's router
+  // This attempts to add our module routes to Nitro's routing table
+  const router = nitroApp.h3App.router || nitroApp.h3App
+  for (const route of routes) {
+    const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch'
+    if (router[method]) {
+      router[method](route.path, route.handler)
+    }
+  }
+
+  // Fallback: if individual registration doesn't work,
+  // register the entire h3 app as middleware
+  nitroApp.h3App.use(eventHandler((event) => {
+    return app.handler(event)
+  }))
+})

@@ -1,0 +1,22 @@
+{
+  "name": "@hexane-poc/module-tree",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nitro dev",
+    "dev:standalone": "node --import tsx .standalone/index.ts",
+    "build": "nitro build",
+    "preview": "node .output/server/index.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "h3": "^1.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "nitropack": "^2.12.9",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

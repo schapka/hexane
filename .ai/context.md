@@ -57,19 +57,22 @@ if (packageExists("drizzle-orm")) {
 
 ```typescript
 // Guards first, then extractors, handler gets only extracted values
-router.post('/users',
+router.post(
+  "/users",
   route()
-    .rateLimit({ max: 100 })        // Guard - no value extracted
-    .validateApiKey()                // Guard - no value extracted
-    .body(UserSchema)                // Extractor - adds body to params
-    .auth()                          // Extractor - adds user to params
-    .handle(async (body, user) => {  // Only extracted values as params!
+    .rateLimit({ max: 100 }) // Guard - no value extracted
+    .validateApiKey() // Guard - no value extracted
+    .body(UserSchema) // Extractor - adds body to params
+    .auth() // Extractor - adds user to params
+    .handle(async (body, user) => {
+      // Only extracted values as params!
       return createUser(body, user);
     })
 );
 ```
 
 **Key Benefits:**
+
 - Clear separation between validation (guards) and data extraction (extractors)
 - Type-safe: handler signature automatically inferred from extractors
 - Readable: intent is clear from the chain
@@ -150,11 +153,12 @@ export default defineRouter().get(
   "/users/:id",
   route()
     .rateLimit({ max: 50 })
-    .requireAuth()                              // Guard - checks auth exists
-    .params({ id: z.string().uuid() })          // Extractor - typed params
-    .query<{ include?: string }>()              // Extractor - typed query
-    .auth<User>()                               // Extractor - user object
-    .handle(async (params, query, user) => {    // Fully typed!
+    .requireAuth() // Guard - checks auth exists
+    .params({ id: z.string().uuid() }) // Extractor - typed params
+    .query<{ include?: string }>() // Extractor - typed query
+    .auth<User>() // Extractor - user object
+    .handle(async (params, query, user) => {
+      // Fully typed!
       return await userService.findById(params.id, query.include);
     })
 );
@@ -200,21 +204,26 @@ export const usersModule = defineModule({
 - [x] Guard/Extractor fluent API design decision
 - [x] POC for Guards & Extractors pattern
 - [x] ADR-0001: Guards and Extractors Pattern
+- [x] POC for Module Tree & Nitro Integration
+- [x] ADR-0002: Nitro Integration Strategy
+- [x] Verified deployment to multiple targets (Node, Cloudflare, Vercel)
+- [x] Future architecture design (CLI-based invisible abstraction)
 
 ### In Progress
 
-- [ ] Core router implementation with Guards & Extractors
+- [ ] Packaging as @hexane/core
+- [ ] CLI implementation (hexane dev/build/start)
 
 ### Upcoming
 
-- [ ] ADR-0002: Fluent API Implementation
-- [ ] ADR-0003: Handler Parameter Type Inference
-- [ ] ADR-0004: Custom Extension Points
+- [ ] ADR-0003: CLI Architecture and Tooling
+- [ ] ADR-0004: Fluent API Implementation
+- [ ] ADR-0005: Handler Parameter Type Inference
+- [ ] Core router implementation with Guards & Extractors
 - [ ] DI container
 - [ ] Standard Schema integration
 - [ ] Auto-configuration
-- [ ] Module system
-- [ ] CLI tooling
+- [ ] Code generation tooling
 
 ## File Structure Conventions
 
@@ -285,13 +294,51 @@ Should work with any:
 - **DI**: Dependency Injection
 - **ADR**: Architecture Decision Record
 
+## Nitro Integration Pattern
+
+Hexane abstracts Nitro completely, providing a clean user experience:
+
+### Current (POC)
+
+```typescript
+// routes/[...].ts - Framework internal (users see this in POC)
+import { createH3AppFromModule } from "../core";
+import { AppModule } from "../app/main";
+
+const { app } = createH3AppFromModule(AppModule);
+export default defineEventHandler((event) => app.handler(event));
+```
+
+### Future (v1.0)
+
+```typescript
+// User's project - NO Nitro files visible
+my-app/
+├── app/
+│   └── main.ts        # export { AppModule }
+└── package.json       # "dev": "hexane dev"
+
+// Everything else managed by @hexane/core CLI
+```
+
+**Key Decisions:**
+
+- ✅ Use catch-all route pattern (`routes/[...].ts`) - NOT Nitro plugins
+- ✅ CLI-based abstraction in production (like Next.js/Nuxt)
+- ✅ User code is framework-agnostic (just modules)
+- ✅ Works with all Nitro deployment targets
+
+**See:** ADR-0002 for detailed rationale
+
 ## References
 
 - [Nitro Documentation](https://nitro.unjs.io)
 - [H3 Documentation](https://h3.unjs.io)
 - [Standard Schema Spec](https://github.com/standard-schema/standard-schema)
 - [ADR-0001: Guards and Extractors Pattern](/docs/architecture/decisions/0001-guards-and-extractors-pattern.md)
+- [ADR-0002: Nitro Integration Strategy](/docs/architecture/decisions/0002-nitro-integration-strategy.md)
 - [POC: Guards & Extractors](/poc/guards-extractors/)
+- [POC: Module Tree & Nitro](/poc/module-tree/)
 
 ## AI Assistant Notes
 

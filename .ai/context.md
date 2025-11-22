@@ -78,7 +78,56 @@ router.post(
 - Readable: intent is clear from the chain
 - Composable: easy to reorder or add new guards/extractors
 
-### 3. Parameter-Based DI (FastAPI Inspired)
+### 3. Module System (NestJS Inspired, Improved)
+
+**Module-based architecture with circular dependency solutions:**
+
+```typescript
+// Module definition - clean, decorator-free
+export const UsersModule = defineModule({
+  name: "users",
+  imports: [CommonModule], // Shared modules
+  routes: [userRoutes], // Route definitions
+  providers: [UserService], // Services
+  exports: [UserService], // Exportable services
+});
+```
+
+**Key Improvements Over NestJS:**
+
+- ✅ No decorators required
+- ✅ Service-level DI prevents circular dependencies
+- ✅ Lazy module imports `() => Module` when needed
+- ✅ Build-time cycle detection
+- ✅ Event-driven decoupling as alternative
+
+**Circular Dependency Handling:**
+
+```typescript
+// ✅ GOOD: Service-level DI (no circular deps)
+class UserService {
+  constructor(
+    private orders = inject(OrderService) // Direct injection
+  ) {}
+}
+
+// ✅ GOOD: Lazy imports when needed
+export const UsersModule = defineModule({
+  imports: [
+    CommonModule, // Eager
+    () => OrdersModule, // Lazy (breaks cycles)
+  ],
+});
+
+// ❌ AVOID: Module imports for services (causes cycles)
+export const UsersModule = defineModule({
+  imports: [OrdersModule], // Just to use OrderService - don't do this!
+});
+```
+
+**See:** ADR-0003 for detailed circular dependency strategy
+
+### 4. Parameter-Based DI (FastAPI Inspired)
 
 ```typescript
 // Dependencies via function parameters
@@ -90,7 +139,7 @@ async function handler(
 }
 ```
 
-### 4. Standard Schema Integration
+### 5. Standard Schema Integration
 
 ```typescript
 // Support any validator (Zod, Valibot, Arktype)
@@ -206,23 +255,27 @@ export const usersModule = defineModule({
 - [x] ADR-0001: Guards and Extractors Pattern
 - [x] POC for Module Tree & Nitro Integration
 - [x] ADR-0002: Nitro Integration Strategy
+- [x] ADR-0003: Module System and Circular Dependencies
 - [x] Verified deployment to multiple targets (Node, Cloudflare, Vercel)
 - [x] Future architecture design (CLI-based invisible abstraction)
+- [x] Circular dependency strategy and solutions
 
 ### In Progress
 
 - [ ] Packaging as @hexane/core
 - [ ] CLI implementation (hexane dev/build/start)
+- [ ] DI container with circular dependency support
 
 ### Upcoming
 
-- [ ] ADR-0003: CLI Architecture and Tooling
-- [ ] ADR-0004: Fluent API Implementation
-- [ ] ADR-0005: Handler Parameter Type Inference
+- [ ] ADR-0004: CLI Architecture and Tooling
+- [ ] ADR-0005: Dependency Injection Container Design
+- [ ] ADR-0006: Fluent API Implementation
 - [ ] Core router implementation with Guards & Extractors
-- [ ] DI container
+- [ ] Event bus for decoupled communication
 - [ ] Standard Schema integration
 - [ ] Auto-configuration
+- [ ] Build-time cycle detection tooling
 - [ ] Code generation tooling
 
 ## File Structure Conventions
@@ -330,6 +383,66 @@ my-app/
 
 **See:** ADR-0002 for detailed rationale
 
+## Module System Best Practices
+
+### When to Use Modules
+
+✅ **Use modules for:**
+
+- Multiple related routes (users CRUD)
+- Shared services between routes
+- Feature can be independently tested
+- Team owns a domain area
+- Cross-cutting concerns (auth, logging)
+
+❌ **Don't use modules for:**
+
+- Single route/endpoint
+- No shared state
+- Prototyping/exploring
+- Simple utility functions
+
+### Avoiding Circular Dependencies
+
+**Primary Strategy: Service-Level DI**
+
+```typescript
+// Services inject other services directly
+class UserService {
+  constructor(private orders = inject(OrderService)) {}
+}
+
+// No module imports needed!
+export const UsersModule = defineModule({
+  providers: [UserService], // OrderService available via DI
+});
+```
+
+**Fallback: Lazy Module Imports**
+
+```typescript
+export const UsersModule = defineModule({
+  imports: [
+    CommonModule, // Eager - no cycle risk
+    () => OrdersModule, // Lazy - breaks cycles
+  ],
+});
+```
+
+**Alternative: Event-Driven**
+
+```typescript
+class OrderService {
+  async create(order: CreateOrder) {
+    const result = await this.db.create(order);
+    await this.events.emit("order.created", result); // Decoupled!
+    return result;
+  }
+}
+```
+
+**See:** ADR-0003 for comprehensive circular dependency strategy
+
 ## References
 
 - [Nitro Documentation](https://nitro.unjs.io)
@@ -337,12 +450,15 @@ my-app/
 - [Standard Schema Spec](https://github.com/standard-schema/standard-schema)
 - [ADR-0001: Guards and Extractors Pattern](/docs/architecture/decisions/0001-guards-and-extractors-pattern.md)
 - [ADR-0002: Nitro Integration Strategy](/docs/architecture/decisions/0002-nitro-integration-strategy.md)
+- [ADR-0003: Module System and Circular Dependencies](/docs/architecture/decisions/0003-module-system-and-circular-dependencies.md)
 - [POC: Guards & Extractors](/poc/guards-extractors/)
 - [POC: Module Tree & Nitro](/poc/module-tree/)
 
 ## AI Assistant Notes
 
 When helping with Hexane:
+
+### Core Principles
 
 1. Core must work without decorators (decorators may be added as optional future feature)
 2. Always use the fluent Guard/Extractor pattern for routes
@@ -357,4 +473,27 @@ When helping with Hexane:
 11. Prefer composition over inheritance
 12. Keep APIs readable and chainable
 
-Remember: We're building for the future of JavaScript, not maintaining compatibility with legacy patterns.
+### Module System
+
+13. **Modules are for feature boundaries**, not just code organization
+14. **Service dependencies use DI**, not module imports
+15. **Avoid circular dependencies** - use service-level injection
+16. **Lazy imports when needed**: `() => Module` for cycles
+17. **Event-driven for decoupling** - emit events instead of direct calls
+18. **Build-time detection** - warn about cycles early
+
+### Anti-Patterns to Avoid
+
+- ❌ Using module imports just to access services
+- ❌ Creating "god modules" to avoid cycles
+- ❌ Importing modules circularly without lazy resolution
+- ❌ Tight coupling between domain modules
+
+### Better Approaches
+
+- ✅ Service-level DI: `inject(OrderService)` in UserService
+- ✅ Event-driven: `events.emit('order.created')`
+- ✅ Lazy imports: `imports: [() => OrdersModule]`
+- ✅ Shared modules: Extract common code to CommonModule
+
+Remember: We're building for the future of JavaScript, not maintaining compatibility with legacy patterns. We learned from Angular's mistakes - circular dependencies should be prevented by design, not worked around.

@@ -59,22 +59,22 @@ We will use a **catch-all route pattern** (`routes/[...].ts`) as the integration
 
 ```typescript
 // routes/[...].ts - Framework internal, not user code
-import { defineEventHandler } from 'h3'
-import { createH3AppFromModule } from '../core'
-import { AppModule } from '../app/main'
+import { defineEventHandler } from "h3";
+import { createH3AppFromModule } from "../core";
+import { AppModule } from "../app/main";
 
-const { app, routes, providers } = createH3AppFromModule(AppModule)
+const { app, routes, providers } = createH3AppFromModule(AppModule);
 
 export default defineEventHandler((event) => {
-  return app.handler(event)
-})
+  return app.handler(event);
+});
 ```
 
 #### 2. User Entry Point
 
 ```typescript
 // app/main.ts - User's ONLY framework interaction
-export { AppModule } from './app.module'
+export { AppModule } from "./app.module";
 ```
 
 #### 3. Core Module Tree Builder
@@ -83,21 +83,21 @@ export { AppModule } from './app.module'
 // core.ts - Framework API
 export function createH3AppFromModule(rootModule: ModuleDefinition) {
   // 1. Traverse module tree
-  const routes = collectRoutes(rootModule)
-  const providers = collectProviders(rootModule)
+  const routes = collectRoutes(rootModule);
+  const providers = collectProviders(rootModule);
 
   // 2. Build h3 app
-  const h3App = createH3App()
-  const router = createH3Router()
+  const h3App = createH3App();
+  const router = createH3Router();
 
   // 3. Register routes
   for (const route of routes) {
-    router[route.method.toLowerCase()](route.path, route.handler)
+    router[route.method.toLowerCase()](route.path, route.handler);
   }
 
-  h3App.use(router)
+  h3App.use(router);
 
-  return { app: h3App, routes, providers }
+  return { app: h3App, routes, providers };
 }
 ```
 
@@ -107,17 +107,18 @@ export function createH3AppFromModule(rootModule: ModuleDefinition) {
 
 **Evaluated Approaches:**
 
-| Approach | Result | Reason |
-|----------|--------|--------|
-| **Catch-all route** | ✅ Works | Registered at build time, proper lifecycle |
-| **Nitro plugin** | ❌ Failed | Plugins run after routing configured |
-| **Direct h3 integration** | ⚠️ Possible | Too low-level, loses Nitro benefits |
+| Approach                  | Result      | Reason                                     |
+| ------------------------- | ----------- | ------------------------------------------ |
+| **Catch-all route**       | ✅ Works    | Registered at build time, proper lifecycle |
+| **Nitro plugin**          | ❌ Failed   | Plugins run after routing configured       |
+| **Direct h3 integration** | ⚠️ Possible | Too low-level, loses Nitro benefits        |
 
 **Detailed Analysis:**
 
 #### ✅ Catch-All Route Pattern
 
 **Pros:**
+
 - Works perfectly - all routes serve correctly
 - Registered at build time as part of Nitro's file-based routing
 - Simple and explicit integration point
@@ -126,6 +127,7 @@ export function createH3AppFromModule(rootModule: ModuleDefinition) {
 - Industry standard pattern (used by tRPC, SvelteKit, Remix)
 
 **Cons:**
+
 - One level of indirection (Nitro → catch-all → h3 app)
 - Seems like a "workaround" at first glance
 
@@ -134,22 +136,24 @@ export function createH3AppFromModule(rootModule: ModuleDefinition) {
 #### ❌ Nitro Plugin Approach
 
 **What we tried:**
+
 ```typescript
 // plugins/hexane.ts - DOES NOT WORK
 export default defineNitroPlugin((nitroApp) => {
-  const { app } = createH3AppFromModule(AppModule)
+  const { app } = createH3AppFromModule(AppModule);
 
   // Attempt 1: Register as middleware
-  nitroApp.h3App.use(eventHandler((event) => app.handler(event)))
+  nitroApp.h3App.use(eventHandler((event) => app.handler(event)));
 
   // Attempt 2: Register individual routes
   for (const route of routes) {
-    nitroApp.h3App.router[route.method](route.path, route.handler)
+    nitroApp.h3App.router[route.method](route.path, route.handler);
   }
-})
+});
 ```
 
 **Why it failed:**
+
 - Nitro's routing system is configured BEFORE plugins run
 - Adding middleware in a plugin doesn't integrate with Nitro's router
 - Routes return 404 even though plugin loads successfully
@@ -162,6 +166,7 @@ export default defineNitroPlugin((nitroApp) => {
 For production (v1.0), we'll hide the catch-all route in `@hexane/core`:
 
 **Pros:**
+
 - Users never see framework internals
 - Complete abstraction over Nitro
 - Easy to update framework
@@ -169,6 +174,7 @@ For production (v1.0), we'll hide the catch-all route in `@hexane/core`:
 - Industry standard (Next.js, Nuxt, SvelteKit)
 
 **Cons:**
+
 - More complex initial setup
 - Requires CLI tooling
 - Must maintain virtual module system
@@ -180,21 +186,25 @@ For production (v1.0), we'll hide the catch-all route in `@hexane/core`:
 ### Positive
 
 1. **Clean User Code**
+
    - Users only write modules in `app/`
    - Single entry point: `export { AppModule }`
    - No Nitro knowledge required
 
 2. **Framework Control**
+
    - Can change integration strategy without breaking users
    - Easy to add features (Guards, DI, etc.)
    - Complete control over routing
 
 3. **Deployment Flexibility**
+
    - Works with all Nitro targets
    - Change preset in one config line
    - Verified: Node, Cloudflare, Vercel
 
 4. **Type Safety**
+
    - Full TypeScript inference
    - No type gymnastics required
    - Clean module composition
@@ -207,6 +217,7 @@ For production (v1.0), we'll hide the catch-all route in `@hexane/core`:
 ### Negative
 
 1. **One Level of Indirection**
+
    - Request flow: Nitro → catch-all → h3 app
    - Minimal performance impact (single handler delegation)
    - Acceptable trade-off for flexibility
@@ -236,6 +247,7 @@ routes/
 ```
 
 **Why rejected:**
+
 - Doesn't support module composition
 - Can't share providers between routes
 - Loses type safety across modules
@@ -247,13 +259,16 @@ routes/
 // Rejected approach
 export function hexanePreset() {
   return defineNitroPreset({
-    extends: 'node-server',
-    hooks: { /* inject routes */ }
-  })
+    extends: "node-server",
+    hooks: {
+      /* inject routes */
+    },
+  });
 }
 ```
 
 **Why rejected:**
+
 - More complex than needed
 - Presets are for deployment targets, not app structure
 - Doesn't solve the core integration problem
@@ -262,11 +277,12 @@ export function hexanePreset() {
 
 ```typescript
 // Rejected approach
-const app = await createApp(AppModule)
-await app.listen(3000)
+const app = await createApp(AppModule);
+await app.listen(3000);
 ```
 
 **Why rejected:**
+
 - Loses all Nitro benefits (build, deployment, HMR)
 - Would need to reimplement everything
 - Not deployment-flexible
@@ -279,6 +295,7 @@ await app.listen(3000)
 **Location:** `poc/module-tree/`
 
 **Verified:**
+
 - ✅ Module tree traversal works
 - ✅ Routes registered correctly
 - ✅ Nitro dev server works
@@ -288,6 +305,7 @@ await app.listen(3000)
 - ✅ HMR works in development
 
 **Testing:**
+
 ```bash
 cd poc/module-tree
 
@@ -317,24 +335,28 @@ npm run build        # ✅ Builds for Vercel
 ## Implementation Plan
 
 ### Phase 1: POC ✅ (Complete)
+
 - Validate catch-all route pattern
 - Test Nitro integration
 - Verify deployment targets
 - Document findings
 
 ### Phase 2: Framework Package (Next)
+
 - Create `@hexane/core` package
 - Implement CLI (`hexane dev`, `hexane build`)
 - Package runtime and types
 - Create Nitro preset
 
 ### Phase 3: Hidden Integration
+
 - Move catch-all to virtual module
 - Generate Nitro config from user app
 - CLI handles all Nitro interaction
 - Optional `hexane.config.ts` for overrides
 
 ### Phase 4: Enhanced DX
+
 - Code generation (`hexane generate module`)
 - Development UI (route viewer, module graph)
 - TypeScript IDE integration
@@ -372,14 +394,14 @@ The CLI-based architecture allows Hexane to leverage ALL Nitro features by dynam
 
 #### ✅ What Works
 
-| Feature | Integration Method | User API |
-|---------|-------------------|----------|
-| **Storage** | Framework plugin + DI | `inject(Storage)` |
-| **Tasks** | Module definitions → Nitro tasks | `defineTask()` |
-| **WebSocket** | Module definitions → crossws | `defineWebSocket()` |
-| **SSE** | Built-in Nitro support | `defineSSE()` |
-| **Cache** | Framework plugin + DI | `inject(Cache)` |
-| **Database** | Auto-detection + plugin | `inject(Database)` |
+| Feature       | Integration Method               | User API            |
+| ------------- | -------------------------------- | ------------------- |
+| **Storage**   | Framework plugin + DI            | `inject(Storage)`   |
+| **Tasks**     | Module definitions → Nitro tasks | `defineTask()`      |
+| **WebSocket** | Module definitions → crossws     | `defineWebSocket()` |
+| **SSE**       | Built-in Nitro support           | `defineSSE()`       |
+| **Cache**     | Framework plugin + DI            | `inject(Cache)`     |
+| **Database**  | Auto-detection + plugin          | `inject(Database)`  |
 
 #### How It Works
 
@@ -389,16 +411,17 @@ export function createHexaneNitroConfig(userModule) {
   return defineNitroConfig({
     // Hexane injects plugins based on what user uses
     plugins: [
-      detectStorage(userModule) && '@hexane/plugin-storage',
-      detectTasks(userModule) && '@hexane/plugin-tasks',
-      detectWebSockets(userModule) && '@hexane/plugin-websocket',
+      detectStorage(userModule) && "@hexane/plugin-storage",
+      detectTasks(userModule) && "@hexane/plugin-tasks",
+      detectWebSockets(userModule) && "@hexane/plugin-websocket",
       // User never sees these!
-    ].filter(Boolean)
-  })
+    ].filter(Boolean),
+  });
 }
 ```
 
 **Key Insight:** Plugins don't work for ROUTE registration (timing issue), but they're PERFECT for:
+
 - ✅ Storage integration
 - ✅ Task scheduling
 - ✅ WebSocket support
@@ -407,6 +430,7 @@ export function createHexaneNitroConfig(userModule) {
 - ✅ Feature initialization
 
 This architecture provides the best of both worlds:
+
 - Routes via catch-all (correct lifecycle)
 - Features via plugins (progressive enhancement)
 
@@ -437,7 +461,7 @@ The catch-all route pattern is **not a workaround** - it's the correct way to in
 
 ---
 
-**Decision made by:** Architecture team
+**Decision made by:** Core team
 **Date:** 2025-11-22
 **Implemented in:** POC `poc/module-tree/`
 **Production target:** Hexane v1.0

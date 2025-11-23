@@ -12,18 +12,20 @@ Create a framework that combines Nitro's deployment flexibility with enterprise 
 
 ### Current Status
 
-- **Phase**: Architecture & Design
-- **Stage**: Pre-implementation
-- **Focus**: Establishing patterns, creating proofs of concept
+- **Phase**: Architecture & Initial Implementation
+- **Stage**: Foundation setup (packages/core, packages/vite)
+- **Focus**: Nitro v3/Vite plugin integration, core runtime implementation
+- **Latest Decision**: ADR-0004 - Target Nitro v3 with Vite plugin architecture
 
 ## Technical Context
 
 ### Foundation
 
-- **Runtime**: Nitro (UnJS)
-- **HTTP Layer**: h3 (UnJS)
+- **Build Tool**: Vite (Hexane as Vite plugin)
+- **Runtime**: Nitro v3 (UnJS) - as Vite plugin
+- **HTTP Layer**: h3 v2 (UnJS)
 - **Language**: TypeScript (strict mode)
-- **Package Manager**: pnpm
+- **Package Manager**: pnpm (with workspace catalogs)
 - **Deployment Targets**: Edge, Node.js, Deno, Bun, Cloudflare Workers
 
 ### Core Design Principles
@@ -245,7 +247,7 @@ export const usersModule = defineModule({
 
 ## Implementation Status
 
-### Completed
+### Completed ✅
 
 - [x] Framework vision and goals
 - [x] Core pattern identification
@@ -253,30 +255,41 @@ export const usersModule = defineModule({
 - [x] Guard/Extractor fluent API design decision
 - [x] POC for Guards & Extractors pattern
 - [x] ADR-0001: Guards and Extractors Pattern
-- [x] POC for Module Tree & Nitro Integration
-- [x] ADR-0002: Nitro Integration Strategy
+- [x] POC for Module Tree & Nitro v2 Integration
+- [x] ADR-0002: Nitro v2 Integration Strategy (insights retained)
 - [x] ADR-0003: Module System and Circular Dependencies
+- [x] ADR-0004: Nitro v3 and Vite Plugin Architecture ⭐ NEW
 - [x] Verified deployment to multiple targets (Node, Cloudflare, Vercel)
-- [x] Future architecture design (CLI-based invisible abstraction)
 - [x] Circular dependency strategy and solutions
+- [x] Minimal workspace setup (packages/core, packages/vite scaffolded)
 
-### In Progress
+### In Progress 🚧
 
-- [ ] Packaging as @hexane/core
-- [ ] CLI implementation (hexane dev/build/start)
-- [ ] DI container with circular dependency support
+- [ ] Nitro v3 + Vite plugin POC validation
+- [ ] @hexane/core - Runtime implementation
+  - [ ] Module system (port from POC)
+  - [ ] Decorator metadata collection
+  - [ ] DI container with circular dependency support
+  - [ ] Route collection and traversal
+  - [ ] h3 handler generation
+- [ ] @hexane/vite - Vite plugin implementation
+  - [ ] Plugin scaffold
+  - [ ] Nitro v3 configuration generation
+  - [ ] Programmatic handler registration
+  - [ ] HMR for module changes
 
-### Upcoming
+### Upcoming 📋
 
-- [ ] ADR-0004: CLI Architecture and Tooling
-- [ ] ADR-0005: Dependency Injection Container Design
-- [ ] ADR-0006: Fluent API Implementation
 - [ ] Core router implementation with Guards & Extractors
 - [ ] Event bus for decoupled communication
 - [ ] Standard Schema integration
 - [ ] Auto-configuration
 - [ ] Build-time cycle detection tooling
-- [ ] Code generation tooling
+- [ ] Example application with real module tree
+- [ ] Production deployment testing
+- [ ] Documentation and guides
+- [ ] Code generation tooling (when needed)
+- [ ] CLI package (if/when needed)
 
 ## File Structure Conventions
 
@@ -347,41 +360,91 @@ Should work with any:
 - **DI**: Dependency Injection
 - **ADR**: Architecture Decision Record
 
-## Nitro Integration Pattern
+## Package Structure
 
-Hexane abstracts Nitro completely, providing a clean user experience:
-
-### Current (POC)
-
-```typescript
-import { AppModule } from '../app/main'
-// routes/[...].ts - Framework internal (users see this in POC)
-import { createH3AppFromModule } from '../core'
-
-const { app } = createH3AppFromModule(AppModule)
-export default defineEventHandler(event => app.handler(event))
-```
-
-### Future (v1.0)
+Hexane uses a minimal two-package monorepo structure:
 
 ```bash
-# User's project - NO Nitro files visible
-my-app/
-├── app/
-│   └── main.ts        # export { AppModule }
-└── package.json       # "dev": "hexane dev"
+packages/
+├── core/     # @hexane/core - Runtime (modules, DI, decorators, metadata)
+└── vite/     # @hexane/vite - Vite plugin (integration with Nitro v3)
+```
 
-# Everything else managed by @hexane/core CLI
+**No CLI package initially** - Vite handles dev/build commands, production runs Nitro's output directly.
+
+## Nitro v3 Integration Architecture
+
+Hexane is a **Vite plugin** that wraps and configures Nitro v3:
+
+### User Configuration
+
+```typescript
+import { hexane } from '@hexane/vite'
+// vite.config.ts - Single config file
+import { defineConfig } from 'vite'
+import { AppModule } from './app/app.module'
+
+export default defineConfig({
+  plugins: [
+    hexane({
+      modules: [AppModule]
+    })
+  ]
+})
+```
+
+### Development & Production
+
+```bash
+# Development
+vite dev                    # Vite + Hexane plugin + Nitro v3
+
+# Build
+vite build                  # Generates .output/ via Nitro
+
+# Production
+node .output/server/index.mjs  # Run Nitro's output
+```
+
+### How It Works
+
+```
+┌─────────────────────────┐
+│  vite.config.ts         │
+│  hexane({ modules })    │
+└─────────────────────────┘
+           ↓
+┌─────────────────────────┐
+│  @hexane/vite           │
+│  - Generate handlers    │
+│  - Configure Nitro      │
+└─────────────────────────┘
+           ↓
+┌─────────────────────────┐
+│  Nitro v3 (Vite plugin) │
+│  - handlers: [...]      │
+│  - Server lifecycle     │
+└─────────────────────────┘
+           ↓
+┌─────────────────────────┐
+│  h3 v2                  │
+│  - Request handling     │
+└─────────────────────────┘
 ```
 
 **Key Decisions:**
 
-- ✅ Use catch-all route pattern (`routes/[...].ts`) - NOT Nitro plugins
-- ✅ CLI-based abstraction in production (like Next.js/Nuxt)
+- ✅ Vite plugin architecture (wraps Nitro v3)
+- ✅ Programmatic handler registration via `handlers` config
+- ✅ No file-based routing workarounds (catch-all routes obsolete)
+- ✅ Single config file for users (`vite.config.ts`)
+- ✅ No CLI needed (Vite handles dev/build)
 - ✅ User code is framework-agnostic (just modules)
 - ✅ Works with all Nitro deployment targets
 
-**See:** ADR-0002 for detailed rationale
+**See:**
+- ADR-0004 for Nitro v3 + Vite plugin architecture
+- ADR-0002 for Nitro v2 integration insights (catch-all pattern, plugin timing)
 
 ## Module System Best Practices
 
@@ -445,14 +508,21 @@ class OrderService {
 
 ## References
 
-- [Nitro Documentation](https://nitro.unjs.io)
+### Documentation
+- [Nitro v3 Documentation](https://v3.nitro.build/docs)
 - [H3 Documentation](https://h3.unjs.io)
+- [Vite Documentation](https://vitejs.dev)
 - [Standard Schema Spec](https://github.com/standard-schema/standard-schema)
+
+### Architecture Decision Records
 - [ADR-0001: Guards and Extractors Pattern](/docs/architecture/decisions/0001-guards-and-extractors-pattern.md)
-- [ADR-0002: Nitro Integration Strategy](/docs/architecture/decisions/0002-nitro-integration-strategy.md)
+- [ADR-0002: Nitro v2 Integration Strategy](/docs/architecture/decisions/0002-nitro-integration-strategy.md)
 - [ADR-0003: Module System and Circular Dependencies](/docs/architecture/decisions/0003-module-system-and-circular-dependencies.md)
+- [ADR-0004: Nitro v3 and Vite Plugin Architecture](/docs/architecture/decisions/0004-nitro-v3-vite-plugin-architecture.md) ⭐
+
+### Proofs of Concept
 - [POC: Guards & Extractors](/poc/guards-extractors/)
-- [POC: Module Tree & Nitro](/poc/module-tree/)
+- [POC: Module Tree & Nitro v2](/poc/module-tree/)
 
 ## AI Assistant Notes
 
@@ -482,6 +552,16 @@ When helping with Hexane:
 17. **Event-driven for decoupling** - emit events instead of direct calls
 18. **Build-time detection** - warn about cycles early
 
+### Architecture (Nitro v3 + Vite Plugin)
+
+19. **Target Nitro v3 and h3 v2** - build on modern foundation
+20. **Hexane is a Vite plugin** - wraps and configures Nitro v3
+21. **Programmatic handlers** - use Nitro v3's `handlers` config array
+22. **No file-based workarounds** - v3 eliminates need for catch-all routes
+23. **Single config file** - users only need `vite.config.ts`
+24. **No CLI package initially** - Vite handles dev/build
+25. **Two packages**: `@hexane/core` (runtime) and `@hexane/vite` (plugin)
+
 ### Anti-Patterns to Avoid
 
 - ❌ Using module imports just to access services
@@ -496,4 +576,12 @@ When helping with Hexane:
 - ✅ Lazy imports: `imports: [() => OrdersModule]`
 - ✅ Shared modules: Extract common code to CommonModule
 
-Remember: We're building for the future of JavaScript, not maintaining compatibility with legacy patterns. We learned from Angular's mistakes - circular dependencies should be prevented by design, not worked around.
+### Key Reminders
+
+**Building for the Future**: We're targeting Nitro v3 (alpha) and h3 v2 to build on modern architecture from day one. This avoids technical debt and migration work later. The stability risk is acceptable for a new framework.
+
+**Vite Plugin Strategy**: Hexane wraps Nitro v3 as a Vite plugin. This provides clean integration through programmatic handler registration (no file-based workarounds), single config file UX, and leverages Vite's excellent tooling.
+
+**Start Minimal**: Two packages initially (`@hexane/core` runtime, `@hexane/vite` plugin). No CLI needed - Vite handles dev/build. Add packages organically when real needs emerge.
+
+**Circular Dependencies**: Should be prevented by design (service-level DI), not worked around. We learned from Angular's mistakes.

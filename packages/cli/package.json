@@ -10,29 +10,26 @@
     "directory": "packages/cli"
   },
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+    ".": "./dist/index.mjs",
+    "./cli": "./bin/hexane.mjs"
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "hexane": "./dist/index.js"
+    "hexane": "bin/hexane.mjs"
   },
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "dev": "rolldown -c rolldown.config.ts --watch",
-    "build": "rolldown -c rolldown.config.ts"
+    "dev": "tsdown --watch",
+    "build": "tsdown"
   },
   "devDependencies": {
     "eslint": "catalog:dev",
-    "rolldown": "catalog:dev",
+    "tsdown": "catalog:dev",
     "typescript": "catalog:dev"
   }
 }

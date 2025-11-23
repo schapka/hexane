@@ -1,0 +1,10 @@
+import { defineConfig } from 'tsdown'
+
+export default defineConfig({
+  entry: ['src/index.ts'],
+  fixedExtension: true,
+  dts: {
+    oxc: true,
+  },
+  failOnWarn: true,
+})

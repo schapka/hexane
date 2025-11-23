@@ -37,17 +37,19 @@ What other options we looked at and why we rejected them
 
 ## ADR Index
 
-### Core Patterns
+### Core Architecture
 
-- [ADR-0001: Guards and Extractors Pattern](./0001-guards-and-extractors-pattern.md) - **Accepted** - Establishes the foundational pattern for request handling
+- [ADR-0001: Guards and Extractors Pattern](./0001-guards-and-extractors-pattern.md) - **Accepted** (2025-11-22) - Establishes the foundational pattern for request handling
+- [ADR-0002: Nitro Integration Strategy](./0002-nitro-integration-strategy.md) - **Accepted** (2025-11-22) - Defines how Hexane integrates with Nitro v2 (insights retained, implementation superseded by ADR-0004)
+- [ADR-0003: Module System and Circular Dependencies](./0003-module-system-and-circular-dependencies.md) - **Accepted** (2025-11-22) - Handles module composition and circular dependency resolution
+- [ADR-0004: Nitro v3 and Vite Plugin Architecture](./0004-nitro-v3-vite-plugin-architecture.md) - **Accepted** (2025-11-23) - Adopts Nitro v3 with Vite plugin architecture, defines package structure
 
-### Implementation (Planned)
+### Future Considerations
 
-- **ADR-0002**: Fluent API Implementation _(pending)_
-- **ADR-0003**: Handler Parameter Type Inference _(pending)_
-- **ADR-0004**: Custom Extension Points _(pending)_
 - **ADR-0005**: Error Handling Strategy _(pending)_
 - **ADR-0006**: Response Interceptor Pattern _(pending)_
+- **ADR-0007**: Authentication & Authorization Patterns _(pending)_
+- **ADR-0008**: Database Integration Strategy _(pending)_
 
 ## When to Write an ADR
 
